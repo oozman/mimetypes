@@ -20,6 +20,5 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.DEPLOY_KEY }}
-          script: |
-            cd /home/ubuntu/docker_dev/testhook
-            touch testAction.txt
+	  port: 22
+	  script: whoami

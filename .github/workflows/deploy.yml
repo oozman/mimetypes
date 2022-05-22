@@ -1,3 +1,6 @@
+
+    
+
 name: Deploy site files
 
 on:
@@ -9,11 +12,31 @@ on:
       - LICENSE
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest # 使用ubuntu系统镜像运行自动化脚本
-    steps:
-      - name: executing remote ssh commands
+    deploy:
+      runs-on: ubuntu-latest # 使用ubuntu系统镜像运行自动化脚本
+      steps:
+      
+      - name: Install OpenVPN
+        run: |
+            sudo apt-get update
+            sudo apt-get --assume-yes --no-install-recommends install openvpn
+            
+      - name: Setup VPN config
+        run: |
+          echo "${{ secrets.CA_CRT }}" > ca.crt
+          echo "${{ secrets.USER_CRT }}" > user.crt
+          echo "${{ secrets.USER_KEY }}" > user.key
+          echo "${{ secrets.TLS_KEY }}" > tls.key
+          
+      - name: Connect VPN
+        run: sudo openvpn --config ".github/vpn/client.ovpn" --log "vpn.log" --daemon
         
+      - name: Wait for a VPN connection
+        timeout-minutes: 2
+        run: until ping -c1 122.18.236.136; do sleep 2; done
+    
+      - name: executing remote ssh commands
+
         # 使用appleboy/ssh-action@master来执行命令
         uses: appleboy/ssh-action@master
         with:
@@ -22,3 +45,9 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           script: whoami
+
+      - name: Kill VPN connection
+        if: always()
+        run: |
+          sudo chmod 777 vpn.log
+          sudo killall openvpn
